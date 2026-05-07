@@ -16,7 +16,7 @@ function App() {
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
 
-  // โหลดข้อมูล realtime
+  // realtime
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "cars"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -72,9 +72,9 @@ function App() {
       <div className="car-list">
         {cars.map((car) => (
           <div className="car-card" key={car.id}>
-            <h2>{car.vin}</h2>
+            <h2>{car.model}</h2>
 
-            <p>{car.model}</p>
+            <p>VIN: {car.vin}</p>
 
             <p>Progress: {car.progress}%</p>
 
