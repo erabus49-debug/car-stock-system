@@ -205,4 +205,14 @@ td {
     display: block;
     overflow-x: auto;
   }
+}.chart-box{
+  margin-bottom:30px;
+}
+
+.chart-card{
+  background:#081426;
+  border:1px solid #1e293b;
+  border-radius:20px;
+  padding:25px;
+  height:400px;
 }
