@@ -10,14 +10,14 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "./firebase";
-
 import {
   PieChart,
   Pie,
   Cell,
   ResponsiveContainer,
 } from "recharts";
+
+import { db } from "./firebase";
 
 function App() {
   const [cars, setCars] = useState([]);
@@ -71,25 +71,21 @@ function App() {
   };
 
   const completed = cars.filter((c) => c.progress >= 100).length;
+
   const waiting = cars.filter((c) => c.progress === 0).length;
+
   const working = cars.filter(
     (c) => c.progress > 0 && c.progress < 100
   ).length;
-  const completed = cars.filter((c) => c.progress >= 100).length;
 
-const waiting = cars.filter((c) => c.progress === 0).length;
+  const chartData = [
+    { name: "เสร็จแล้ว", value: completed },
+    { name: "กำลังทำ", value: working },
+    { name: "รอทำ", value: waiting },
+  ];
 
-const working = cars.filter(
-  (c) => c.progress > 0 && c.progress < 100
-).length;
+  const COLORS = ["#22c55e", "#facc15", "#ef4444"];
 
-const chartData = [
-  { name: "เสร็จแล้ว", value: completed },
-  { name: "กำลังทำ", value: working },
-  { name: "รอทำ", value: waiting },
-];
-
-const COLORS = ["#22c55e", "#facc15", "#ef4444"];
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -124,31 +120,31 @@ const COLORS = ["#22c55e", "#facc15", "#ef4444"];
         </div>
 
         <div className="chart-box">
-  <div className="chart-card">
-    <h2>สถานะรถ</h2>
+          <div className="chart-card">
+            <h2>สถานะรถ</h2>
 
-    <ResponsiveContainer width="100%" height={320}>
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          innerRadius={70}
-          outerRadius={110}
-          paddingAngle={5}
-          dataKey="value"
-        >
-          {chartData.map((entry, index) => (
-            <Cell
-              key={index}
-              fill={COLORS[index % COLORS.length]}
-            />
-          ))}
-        </Pie>
-      </PieChart>
-    </ResponsiveContainer>
-  </div>
-</div>
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={110}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={index}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
         <div className="add-box">
           <input
