@@ -78,6 +78,13 @@ function App() {
 
             <p>Progress: {car.progress}%</p>
 
+<div className="progress-bar">
+  <div
+    className="progress-fill"
+    style={{ width: `${car.progress}%` }}
+  ></div>
+</div>
+
             <button onClick={() => deleteCar(car.id)}>
               ลบรถ
             </button>
