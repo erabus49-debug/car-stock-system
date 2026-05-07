@@ -16,7 +16,6 @@ function App() {
   const [cars, setCars] = useState([]);
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "cars"), (snapshot) => {
@@ -38,9 +37,7 @@ function App() {
       vin,
       model,
       progress: 0,
-      status: "กำลังผลิต",
-      image:
-        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1200&auto=format&fit=crop",
+      status: "รอทำ",
     });
 
     setVin("");
@@ -52,117 +49,145 @@ function App() {
   };
 
   const increaseProgress = async (car) => {
-    if (car.progress >= 100) return;
+    const next = Math.min(car.progress + 10, 100);
+
+    let status = "กำลังทำ";
+
+    if (next >= 100) {
+      status = "เสร็จแล้ว";
+    }
 
     await updateDoc(doc(db, "cars", car.id), {
-      progress: car.progress + 10,
+      progress: next,
+      status,
     });
   };
 
-  const filteredCars = cars.filter(
-    (car) =>
-      car.vin.toLowerCase().includes(search.toLowerCase()) ||
-      car.model.toLowerCase().includes(search.toLowerCase())
-  );
+  const completed = cars.filter((c) => c.progress >= 100).length;
+  const waiting = cars.filter((c) => c.progress === 0).length;
+  const working = cars.filter(
+    (c) => c.progress > 0 && c.progress < 100
+  ).length;
 
   return (
-    <div className="app">
-      <div className="topbar">
-        <h1>🚗 CAR STOCK SYSTEM</h1>
+    <div className="layout">
+      <aside className="sidebar">
+        <h2>🚘 Car Custom</h2>
 
-        <input
-          className="search"
-          placeholder="ค้นหา VIN / รุ่นรถ"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+        <button className="menu active">Dashboard</button>
+        <button className="menu">ข้อมูลรถ</button>
+        <button className="menu">สถานะงาน</button>
+      </aside>
 
-      <div className="add-box">
-        <input
-          placeholder="VIN"
-          value={vin}
-          onChange={(e) => setVin(e.target.value)}
-        />
-
-        <input
-          placeholder="รุ่นรถ"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-        />
-
-        <button onClick={addCar}>เพิ่มรถ</button>
-      </div>
-
-      <div className="stats">
-        <div className="stat-card">
-          <h3>{cars.length}</h3>
-          <p>รถทั้งหมด</p>
-        </div>
-
-        <div className="stat-card">
-          <h3>
-            {
-              cars.filter((car) => car.progress >= 100)
-                .length
-            }
-          </h3>
-          <p>เสร็จแล้ว</p>
-        </div>
-
-        <div className="stat-card">
-          <h3>
-            {
-              cars.filter((car) => car.progress < 100)
-                .length
-            }
-          </h3>
-          <p>กำลังผลิต</p>
-        </div>
-      </div>
-
-      <div className="car-list">
-        {filteredCars.map((car) => (
-          <div className="car-card" key={car.id}>
-            <img src={car.image} alt="car" />
-
-            <div className="status">
-              {car.progress >= 100
-                ? "เสร็จแล้ว"
-                : "กำลังผลิต"}
-            </div>
-
-            <h2>{car.model}</h2>
-
-            <p>VIN: {car.vin}</p>
-
-            <p>Progress: {car.progress}%</p>
-
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${car.progress}%` }}
-              ></div>
-            </div>
-
-            <div className="card-buttons">
-              <button
-                className="progress-btn"
-                onClick={() => increaseProgress(car)}
-              >
-                + เพิ่ม Progress
-              </button>
-
-              <button
-                className="delete-btn"
-                onClick={() => deleteCar(car.id)}
-              >
-                ลบรถ
-              </button>
-            </div>
+      <main className="main">
+        <div className="top-cards">
+          <div className="top-card blue">
+            <h1>{cars.length}</h1>
+            <p>จำนวนรถทั้งหมด</p>
           </div>
-        ))}
-      </div>
+
+          <div className="top-card green">
+            <h1>{completed}</h1>
+            <p>งานเสร็จแล้ว</p>
+          </div>
+
+          <div className="top-card yellow">
+            <h1>{working}</h1>
+            <p>กำลังทำ</p>
+          </div>
+
+          <div className="top-card red">
+            <h1>{waiting}</h1>
+            <p>รอทำ</p>
+          </div>
+        </div>
+
+        <div className="add-box">
+          <input
+            placeholder="VIN"
+            value={vin}
+            onChange={(e) => setVin(e.target.value)}
+          />
+
+          <input
+            placeholder="รุ่นรถ"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+          />
+
+          <button onClick={addCar}>เพิ่มรถ</button>
+        </div>
+
+        <div className="table-box">
+          <h2>รถล่าสุด</h2>
+
+          <table>
+            <thead>
+              <tr>
+                <th>VIN</th>
+                <th>รุ่นรถ</th>
+                <th>สถานะ</th>
+                <th>ความคืบหน้า</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {cars.map((car) => (
+                <tr key={car.id}>
+                  <td>{car.vin}</td>
+                  <td>{car.model}</td>
+
+                  <td>
+                    <span
+                      className={`status ${
+                        car.progress >= 100
+                          ? "done"
+                          : car.progress > 0
+                          ? "working"
+                          : "wait"
+                      }`}
+                    >
+                      {car.progress >= 100
+                        ? "เสร็จแล้ว"
+                        : car.progress > 0
+                        ? "กำลังทำ"
+                        : "รอทำ"}
+                    </span>
+                  </td>
+
+                  <td>
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${car.progress}%` }}
+                      ></div>
+                    </div>
+
+                    <span>{car.progress}%</span>
+                  </td>
+
+                  <td className="actions">
+                    <button
+                      className="edit-btn"
+                      onClick={() => increaseProgress(car)}
+                    >
+                      +เพิ่ม
+                    </button>
+
+                    <button
+                      className="delete-btn"
+                      onClick={() => deleteCar(car.id)}
+                    >
+                      ลบ
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   );
 }
