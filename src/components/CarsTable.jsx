@@ -286,16 +286,6 @@ function CarsTable({
                   {/* PARTS */}
 
                   <td>
-                    <button
-                      className="parts-btn"
-                      onClick={() =>
-                        setSelectedCar(
-                          index
-                        )
-                      }
-                    >
-                      ดูของแต่ง
-                    </button>
                   </td>
                 </tr>
               )
