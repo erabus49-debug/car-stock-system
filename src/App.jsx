@@ -413,11 +413,11 @@ const deleteMod = async (
 
   return (
 
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#020817] text-white">
+    <div className="min-h-screen bg-[#020817] text-white md:flex">
 
       {/* SIDEBAR */}
 
-      <aside className="w-full md:w-[260px] bg-[#071225] border-b md:border-b-0 md:border-r border-[#1e293b] p-4 md:p-6 flex md:block gap-3 overflow-x-auto">
+      <aside className="sticky top-0 z-50 w-full md:w-[260px] bg-[#071225] border-b md:border-b-0 md:border-r border-[#1e293b] p-4 flex md:flex-col gap-3 overflow-x-auto">
 
         <h1 className="text-3xl font-black mb-10">
           🚘 Car Custom
@@ -461,7 +461,7 @@ const deleteMod = async (
 
       {/* MAIN */}
 
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-hidden">
 
         {/* DASHBOARD */}
 
