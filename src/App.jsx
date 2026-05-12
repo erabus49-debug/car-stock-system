@@ -24,6 +24,10 @@ function App() {
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
 
+  const [editingCar, setEditingCar] = useState(null);
+  const [editVin, setEditVin] = useState("");
+  const [editModel, setEditModel] = useState("");
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "cars"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -68,6 +72,21 @@ function App() {
       progress: next,
       status,
     });
+  };
+
+  const openEdit = (car) => {
+    setEditingCar(car);
+    setEditVin(car.vin);
+    setEditModel(car.model);
+  };
+
+  const saveEdit = async () => {
+    await updateDoc(doc(db, "cars", editingCar.id), {
+      vin: editVin,
+      model: editModel,
+    });
+
+    setEditingCar(null);
   };
 
   const completed = cars.filter((c) => c.progress >= 100).length;
@@ -220,6 +239,13 @@ function App() {
                     </button>
 
                     <button
+                      className="edit-btn"
+                      onClick={() => openEdit(car)}
+                    >
+                      แก้ไข
+                    </button>
+
+                    <button
                       className="delete-btn"
                       onClick={() => deleteCar(car.id)}
                     >
@@ -232,6 +258,35 @@ function App() {
           </table>
         </div>
       </main>
+
+      {editingCar && (
+        <div className="modal">
+          <div className="modal-box">
+            <h2>แก้ไขข้อมูลรถ</h2>
+
+            <input
+              value={editVin}
+              onChange={(e) => setEditVin(e.target.value)}
+            />
+
+            <input
+              value={editModel}
+              onChange={(e) => setEditModel(e.target.value)}
+            />
+
+            <div className="modal-buttons">
+              <button onClick={saveEdit}>บันทึก</button>
+
+              <button
+                className="delete-btn"
+                onClick={() => setEditingCar(null)}
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
