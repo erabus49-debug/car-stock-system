@@ -413,11 +413,11 @@ const deleteMod = async (
 
   return (
 
-    <div className="flex min-h-screen bg-[#020817] text-white">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#020817] text-white">
 
       {/* SIDEBAR */}
 
-      <aside className="w-[260px] bg-[#071225] border-r border-[#1e293b] p-6">
+      <aside className="w-full md:w-[260px] bg-[#071225] border-r border-[#1e293b] p-6">
 
         <h1 className="text-3xl font-black mb-10">
           🚘 Car Custom
@@ -427,7 +427,7 @@ const deleteMod = async (
           onClick={() =>
             setMenu("dashboard")
           }
-          className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl mb-4 font-bold ${
+          className={`w-full md:w-full flex items-center gap-3 px-5 py-4 rounded-2xl mb-4 font-bold ${
             menu === "dashboard"
               ? "bg-blue-600"
               : "bg-[#0f172a]"
@@ -444,7 +444,7 @@ const deleteMod = async (
           onClick={() =>
             setMenu("cars")
           }
-          className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold ${
+          className={`w-full md:w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold ${
             menu === "cars"
               ? "bg-blue-600"
               : "bg-[#0f172a]"
@@ -461,7 +461,7 @@ const deleteMod = async (
 
       {/* MAIN */}
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 md:p-8 overflow-auto">
 
         {/* DASHBOARD */}
 
