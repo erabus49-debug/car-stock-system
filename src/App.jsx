@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import {
   collection,
   addDoc,
@@ -12,1087 +11,489 @@ import {
 import {
   LayoutDashboard,
   Car,
-  Trash2,
+  Clock3,
+  CheckCircle2,
+  XCircle,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 import { db } from "./firebase";
 
 function App() {
-
-  const [menu, setMenu] =
-    useState("dashboard");
-
-  const [cars, setCars] =
-    useState([]);
-
-  const [vin, setVin] =
-    useState("");
-
-  const [model, setModel] =
-    useState("");
-
-  const [editingId, setEditingId] =
-    useState(null);
-  
-  const [filterStatus, setFilterStatus] =
-  useState("ทั้งหมด");
-
-  const [selectedCar, setSelectedCar] =
-    useState(null);
+  const [cars, setCars] = useState([]);
+  const [vin, setVin] = useState("");
+  const [model, setModel] = useState("");
+  const [menu, setMenu] = useState("dashboard");
 
   useEffect(() => {
+    const unsub = onSnapshot(collection(db, "cars"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-    const unsub = onSnapshot(
-      collection(db, "cars"),
-      (snapshot) => {
-
-        const data =
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-
-        setCars(data);
-
-      }
-    );
+      setCars(data);
+    });
 
     return () => unsub();
-
   }, []);
 
   const addCar = async () => {
-
     if (!vin || !model) return;
 
-    await addDoc(
-      collection(db, "cars"),
-      {
-        vin,
-        model,
-
-        pdi: "รอทำ",
-        custom: "รอทำ",
-        delivery: "รอทำ",
-
-        mods: [],
-      }
-    );
+    await addDoc(collection(db, "cars"), {
+      vin,
+      model,
+      pdi: "รอทำ",
+      delivery: "รอทำ",
+      parts: [],
+      progress: 0,
+    });
 
     setVin("");
     setModel("");
-
   };
 
-  const deleteCar = async (
-    id
-  ) => {
-
-    await deleteDoc(
-      doc(db, "cars", id)
-    );
-
+  const deleteCar = async (id) => {
+    await deleteDoc(doc(db, "cars", id));
   };
 
-  const nextStatus = (
-    current
-  ) => {
+  const toggleStatus = async (car, field) => {
+    const current = car[field];
 
     if (current === "รอทำ") {
-      return "กำลังทำ";
+      await updateDoc(doc(db, "cars", car.id), {
+        [field]: "กำลังทำ",
+      });
+    } else if (current === "กำลังทำ") {
+      await updateDoc(doc(db, "cars", car.id), {
+        [field]: "เสร็จแล้ว",
+      });
     }
-
-    if (
-      current === "กำลังทำ"
-    ) {
-      return "เสร็จแล้ว";
-    }
-
-    return "เสร็จแล้ว";
-
   };
 
-const changeStatus = async (
-  id,
-  field,
-  current
-) => {
+  const addPart = async (car, partName) => {
+    if (!partName) return;
 
-  let next = "กำลังทำ";
+    const updatedParts = [
+      ...(car.parts || []),
+      {
+        name: partName,
+        done: false,
+      },
+    ];
 
-  if (current === "กำลังทำ") {
-    next = "เสร็จแล้ว";
-  }
+    const doneCount = updatedParts.filter((p) => p.done).length;
 
-  else if (
-    current === "เสร็จแล้ว"
-  ) {
+    let progress = 0;
 
-    if (
-      editingId === id
-    ) {
-
-      next = "รอทำ";
-
-    }
-
-    else {
-
-      return;
-
-    }
-
-  }
-
-  await updateDoc(
-    doc(db, "cars", id),
-    {
-      [field]: next,
-    }
-  );
-
-};
-
-  const addMod = async (
-    car
-  ) => {
-
-    const mod =
-      prompt(
-        "เพิ่มของแต่ง"
+    if (updatedParts.length > 0) {
+      progress = Math.round(
+        (doneCount / updatedParts.length) * 100
       );
-
-    if (!mod) return;
-
-    await updateDoc(
-      doc(db, "cars", car.id),
-      {
-        mods: [
-          ...(car.mods || []),
-
-          {
-            name: mod,
-            done: false,
-          },
-        ],
-      }
-    );
-
-  };
-
-  const toggleMod = async (
-    car,
-    index
-  ) => {
-
-    const updatedMods =
-      [...car.mods];
-
-    updatedMods[index].done =
-      !updatedMods[index].done;
-
-    const doneCount =
-      updatedMods.filter(
-        (m) => m.done
-      ).length;
-
-    let customStatus =
-      "รอทำ";
-
-    if (
-      doneCount > 0 &&
-      doneCount <
-        updatedMods.length
-    ) {
-
-      customStatus =
-        "กำลังทำ";
-
     }
 
-    if (
-      doneCount ===
-        updatedMods.length &&
-      updatedMods.length > 0
-    ) {
-
-      customStatus =
-        "เสร็จแล้ว";
-
-    }
-
-    await updateDoc(
-      doc(db, "cars", car.id),
-      {
-        mods: updatedMods,
-        custom: customStatus,
-      }
-    );
-
+    await updateDoc(doc(db, "cars", car.id), {
+      parts: updatedParts,
+      progress,
+    });
   };
 
-const deleteMod = async (
-  car,
-  index
-) => {
+  const togglePart = async (car, index) => {
+    const updatedParts = [...car.parts];
 
-  const updatedMods =
-    car.mods.filter(
-      (_, i) =>
-        i !== index
-    );
+    updatedParts[index].done =
+      !updatedParts[index].done;
 
-  const doneCount =
-    updatedMods.filter(
-      (m) => m.done
+    const doneCount = updatedParts.filter(
+      (p) => p.done
     ).length;
 
-  let customStatus =
-    "รอทำ";
+    const progress = Math.round(
+      (doneCount / updatedParts.length) * 100
+    );
 
-  if (
-    doneCount > 0 &&
-    doneCount <
-      updatedMods.length
-  ) {
-
-    customStatus =
-      "กำลังทำ";
-
-  }
-
-  if (
-    doneCount ===
-      updatedMods.length &&
-    updatedMods.length > 0
-  ) {
-
-    customStatus =
-      "เสร็จแล้ว";
-
-  }
-
-  await updateDoc(
-    doc(db, "cars", car.id),
-    {
-      mods: updatedMods,
-      custom: customStatus,
-    }
-  );
-
-  /* REFRESH POPUP */
-
-  setSelectedCar({
-    ...car,
-    mods: updatedMods,
-    custom: customStatus,
-  });
-
-};
-
-  const getStatusColor = (
-    status
-  ) => {
-
-    if (
-      status === "เสร็จแล้ว"
-    ) {
-      return "bg-green-600";
-    }
-
-    if (
-      status === "กำลังทำ"
-    ) {
-      return "bg-yellow-500 text-black";
-    }
-
-    return "bg-red-600";
-
+    await updateDoc(doc(db, "cars", car.id), {
+      parts: updatedParts,
+      progress,
+    });
   };
 
-  const filteredCars =
-  cars.filter((car) => {
+  const deletePart = async (car, index) => {
+    const updatedParts = [...car.parts];
 
-    if (
-      filterStatus === "ทั้งหมด"
-    ) {
-      return true;
-    }
+    updatedParts.splice(index, 1);
 
-    if (
-      filterStatus === "รอทำ"
-    ) {
+    const doneCount = updatedParts.filter(
+      (p) => p.done
+    ).length;
 
-      return (
-        car.pdi === "รอทำ" ||
-        car.custom === "รอทำ" ||
-        car.delivery === "รอทำ"
+    let progress = 0;
+
+    if (updatedParts.length > 0) {
+      progress = Math.round(
+        (doneCount / updatedParts.length) * 100
       );
-
     }
 
-    if (
-      filterStatus === "กำลังทำ"
-    ) {
-
-      return (
-        car.pdi === "กำลังทำ" ||
-        car.custom === "กำลังทำ" ||
-        car.delivery === "กำลังทำ"
-      );
-
-    }
-
-    if (
-      filterStatus === "เสร็จแล้ว"
-    ) {
-
-      return (
-        car.pdi === "เสร็จแล้ว" &&
-        car.custom === "เสร็จแล้ว" &&
-        car.delivery === "เสร็จแล้ว"
-      );
-
-    }
-
-  });
-  
-  const getProgress = (
-    car
-  ) => {
-
-    let score = 0;
-
-    if (
-      car.pdi === "เสร็จแล้ว"
-    ) {
-      score += 34;
-    }
-
-    if (
-      car.custom === "เสร็จแล้ว"
-    ) {
-      score += 33;
-    }
-
-    if (
-      car.delivery ===
-      "เสร็จแล้ว"
-    ) {
-      score += 33;
-    }
-
-    return score;
-
+    await updateDoc(doc(db, "cars", car.id), {
+      parts: updatedParts,
+      progress,
+    });
   };
 
-  const overallProgress = cars.length
-  ? Math.round(
+  const completed = cars.filter(
+    (c) => c.progress >= 100
+  ).length;
 
-      cars.reduce(
-        (total, car) =>
-          total +
-          getProgress(car),
-        0
-      ) / cars.length
+  const waiting = cars.filter(
+    (c) => c.progress === 0
+  ).length;
 
-    )
-  : 0;
+  const working = cars.filter(
+    (c) =>
+      c.progress > 0 &&
+      c.progress < 100
+  ).length;
 
-  const pendingCars =
-  cars.filter(
-    (car) =>
-
-      car.pdi !== "เสร็จแล้ว" ||
-
-      car.custom !== "เสร็จแล้ว" ||
-
-      car.delivery !== "เสร็จแล้ว"
-  );
+  const overallProgress =
+    cars.length > 0
+      ? Math.round(
+          cars.reduce(
+            (sum, car) => sum + car.progress,
+            0
+          ) / cars.length
+        )
+      : 0;
 
   return (
-
-    <div className="min-h-screen bg-[#020817] text-white md:flex">
-
+    <div className="min-h-screen bg-[#020817] text-white md:flex overflow-x-hidden">
       {/* SIDEBAR */}
 
-      <aside className="sticky top-0 z-50 w-full md:w-[260px] bg-[#071225] border-b md:border-b-0 md:border-r border-[#1e293b] p-4 flex md:flex-col gap-3 overflow-x-auto">
+      <aside className="w-full md:w-[260px] bg-[#071225] border-r border-[#1e293b] p-6">
+        <div className="flex items-center gap-3 mb-10">
+          <Car size={34} className="text-blue-500" />
 
-        <h1 className="text-3xl font-black mb-10">
-          🚘 Car Custom
-        </h1>
+          <div>
+            <h1 className="font-bold text-xl">
+              Car Custom
+            </h1>
+
+            <p className="text-gray-400 text-sm">
+              Management
+            </p>
+          </div>
+        </div>
 
         <button
-          onClick={() =>
-            setMenu("dashboard")
-          }
-          className={`min-w-[180px] md:w-full flex items-center
+          onClick={() => setMenu("dashboard")}
+          className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl mb-3 transition ${
             menu === "dashboard"
               ? "bg-blue-600"
-              : "bg-[#0f172a]"
+              : "bg-[#0b1730]"
           }`}
         >
-
           <LayoutDashboard size={20} />
-
           Dashboard
-
         </button>
 
         <button
-          onClick={() =>
-            setMenu("cars")
-          }
-          className={`min-w-[180px] md:w-full flex items-center
+          onClick={() => setMenu("cars")}
+          className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition ${
             menu === "cars"
               ? "bg-blue-600"
-              : "bg-[#0f172a]"
+              : "bg-[#0b1730]"
           }`}
         >
-
           <Car size={20} />
-
           รถทั้งหมด
-
         </button>
-
       </aside>
 
       {/* MAIN */}
 
-      <main className="flex-1 p-4 md:p-8 overflow-hidden">
-
+      <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
         {/* DASHBOARD */}
 
         {menu === "dashboard" && (
-
           <>
-
-            <div className="grid grid-cols-5 gap-6 mb-8">
-
-              <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
-                <h1 className="text-6xl font-black text-blue-400">
+            <div className="grid grid-cols-4 gap-3 md:gap-6">
+              <div className="bg-[#071225] border border-[#1e293b] rounded-[32px] flex flex-col items-center justify-center py-8 md:py-10">
+                <h1 className="text-[72px] md:text-6xl font-black text-blue-400 leading-none">
                   {cars.length}
                 </h1>
 
-                <p className="text-gray-400 mt-3">
+                <p className="text-center text-gray-400 text-[14px] md:text-base mt-4 leading-8">
                   จำนวนรถทั้งหมด
                 </p>
               </div>
 
-              <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
-                <h1 className="text-6xl font-black text-green-400">
-                  {
-                    cars.filter(
-                      (c) =>
-                        getProgress(c) === 100
-                    ).length
-                  }
+              <div className="bg-[#071225] border border-[#1e293b] rounded-[32px] flex flex-col items-center justify-center py-8 md:py-10">
+                <h1 className="text-[72px] md:text-6xl font-black text-green-400 leading-none">
+                  {completed}
                 </h1>
 
-                <p className="text-gray-400 mt-3">
+                <p className="text-center text-gray-400 text-[14px] md:text-base mt-4 leading-8">
                   เสร็จแล้ว
                 </p>
               </div>
 
-              <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
-                <h1 className="text-6xl font-black text-yellow-400">
-                  {
-                    cars.filter(
-                      (c) =>
-                        getProgress(c) > 0 &&
-                        getProgress(c) < 100
-                    ).length
-                  }
+              <div className="bg-[#071225] border border-[#1e293b] rounded-[32px] flex flex-col items-center justify-center py-8 md:py-10">
+                <h1 className="text-[72px] md:text-6xl font-black text-yellow-400 leading-none">
+                  {working}
                 </h1>
 
-                <p className="text-gray-400 mt-3">
+                <p className="text-center text-gray-400 text-[14px] md:text-base mt-4 leading-8">
                   กำลังทำ
                 </p>
               </div>
 
-              <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
-                <h1 className="text-6xl font-black text-red-400">
-                  {
-                    cars.filter(
-                      (c) =>
-                        getProgress(c) === 0
-                    ).length
-                  }
+              <div className="bg-[#071225] border border-[#1e293b] rounded-[32px] flex flex-col items-center justify-center py-8 md:py-10">
+                <h1 className="text-[72px] md:text-6xl font-black text-red-400 leading-none">
+                  {waiting}
                 </h1>
 
-                <p className="text-gray-400 mt-3">
+                <p className="text-center text-gray-400 text-[14px] md:text-base mt-4 leading-8">
                   รอทำ
                 </p>
               </div>
-
             </div>
 
+            <div className="bg-[#071225] border border-[#1e293b] rounded-[36px] p-8 mt-8">
+              <h1 className="text-[92px] md:text-7xl font-black text-cyan-400 leading-none">
+                {overallProgress}%
+              </h1>
+
+              <p className="text-gray-400 text-xl mt-4">
+                งานรวมทั้งหมด
+              </p>
+            </div>
           </>
-
         )}
-
-        <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
-
-  <h1 className="text-6xl font-black text-cyan-400">
-    {overallProgress}%
-  </h1>
-
-  <p className="text-gray-400 mt-3">
-    งานรวมทั้งหมด
-  </p>
-
-</div>
-
-        {/* ALERT */}
-
-{pendingCars.length > 0 && (
-
-  <div className="bg-red-600/20 border border-red-500 rounded-3xl p-6 mb-8">
-
-    <h2 className="text-2xl font-black text-red-400 mb-5">
-
-      🚨 แจ้งเตือนงานค้าง
-
-    </h2>
-
-    <div className="space-y-4">
-
-      {pendingCars.map((car) => (
-
-        <div
-          key={car.id}
-          className="bg-[#111827] border border-red-500/20 rounded-2xl px-5 py-4 flex items-center justify-between"
-        >
-
-          <div>
-
-            <h3 className="font-bold text-lg">
-              {car.model}
-            </h3>
-
-            <p className="text-slate-400">
-              {car.vin}
-            </p>
-
-          </div>
-
-          <div className="flex gap-3 flex-wrap">
-
-            {car.pdi !== "เสร็จแล้ว" && (
-
-              <span className="bg-red-600 px-4 py-2 rounded-xl text-sm font-bold">
-                PDI ค้าง
-              </span>
-
-            )}
-
-            {car.custom !== "เสร็จแล้ว" && (
-
-              <span className="bg-yellow-500 text-black px-4 py-2 rounded-xl text-sm font-bold">
-                แต่งรถค้าง
-              </span>
-
-            )}
-
-            {car.delivery !== "เสร็จแล้ว" && (
-
-              <span className="bg-blue-600 px-4 py-2 rounded-xl text-sm font-bold">
-                ส่งมอบค้าง
-              </span>
-
-            )}
-
-          </div>
-
-        </div>
-
-      ))}
-
-    </div>
-
-  </div>
-
-)}
 
         {/* CARS */}
 
         {menu === "cars" && (
+          <div className="overflow-x-auto w-full">
+            <div className="bg-[#071225] border border-[#1e293b] rounded-3xl p-6 mt-6 min-w-[1200px]">
+              <div className="flex gap-4 mb-6">
+                <input
+                  placeholder="VIN"
+                  value={vin}
+                  onChange={(e) =>
+                    setVin(e.target.value)
+                  }
+                  className="bg-[#0b1730] border border-[#1e293b] rounded-xl px-4 py-3 outline-none"
+                />
 
-          <div className="bg-[#081426] border border-[#1e293b] rounded-3xl p-6">
+                <input
+                  placeholder="รุ่นรถ"
+                  value={model}
+                  onChange={(e) =>
+                    setModel(e.target.value)
+                  }
+                  className="bg-[#0b1730] border border-[#1e293b] rounded-xl px-4 py-3 outline-none"
+                />
 
-            <div className="flex gap-4 mb-8">
-
-              <input
-                placeholder="VIN"
-                value={vin}
-                onChange={(e) =>
-                  setVin(
-                    e.target.value
-                  )
-                }
-                className="bg-[#0f172a] border border-[#1e293b] rounded-2xl px-5 py-4 w-full outline-none"
-              />
-
-              <input
-                placeholder="รุ่นรถ"
-                value={model}
-                onChange={(e) =>
-                  setModel(
-                    e.target.value
-                  )
-                }
-                className="bg-[#0f172a] border border-[#1e293b] rounded-2xl px-5 py-4 w-full outline-none"
-              />
-
-              <button
-                onClick={addCar}
-                className="bg-blue-600 hover:bg-blue-500 px-8 rounded-2xl font-bold"
-              >
-
-                เพิ่มรถ
-
-              </button>
-
-            </div>
-
-            <div className="flex gap-3 mb-6">
-
-  {[
-    "ทั้งหมด",
-    "รอทำ",
-    "กำลังทำ",
-    "เสร็จแล้ว",
-  ].map((status) => (
-
-    <button
-      key={status}
-      onClick={() =>
-        setFilterStatus(
-          status
-        )
-      }
-      className={`px-5 py-2 rounded-xl font-bold duration-200 ${
-        filterStatus === status
-
-          ? "bg-blue-600"
-
-          : "bg-[#1e293b]"
-      }`}
-    >
-
-      {status}
-
-    </button>
-
-  ))}
-
-</div>
-
-            <div className="overflow-x-auto">
+                <button
+                  onClick={addCar}
+                  className="bg-blue-600 hover:bg-blue-700 px-6 rounded-xl flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  เพิ่มรถ
+                </button>
+              </div>
 
               <table className="w-full">
-
                 <thead>
-
-                  <tr className="border-b border-[#1e293b] text-gray-400">
-
-                    <th className="p-4 text-left">
+                  <tr className="text-gray-400 border-b border-[#1e293b]">
+                    <th className="text-left py-4">
                       VIN
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="text-left">
                       รุ่นรถ
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="text-left">
                       PDI
                     </th>
 
-                    <th className="p-4 text-left">
-                      แต่งรถ
-                    </th>
-
-                    <th className="p-4 text-left">
+                    <th className="text-left">
                       ส่งมอบ
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="text-left">
+                      ความคืบหน้า
+                    </th>
+
+                    <th className="text-left">
                       ของแต่ง
                     </th>
 
-                    <th className="p-4 text-left">
-                      Progress
-                    </th>
-
-                    <th className="p-4 text-left">
+                    <th className="text-left">
                       Action
                     </th>
-
                   </tr>
-
                 </thead>
 
                 <tbody>
-
-                  {filteredCars.map((car) => (
-
+                  {cars.map((car) => (
                     <tr
                       key={car.id}
                       className="border-b border-[#1e293b]"
                     >
-
-                      <td className="p-4 font-bold">
+                      <td className="py-5 font-bold">
                         {car.vin}
                       </td>
 
-                      <td className="p-4">
-                        {car.model}
-                      </td>
+                      <td>{car.model}</td>
 
-                      {/* PDI */}
-
-                      <td className="p-4">
-
-                        <button
-
-  onClick={() =>
-    changeStatus(
-      car.id,
-      "pdi",
-      car.pdi
-    )
-  }
-
-                          className={`${getStatusColor(
-                            car.pdi
-                          )} px-5 py-2 rounded-xl font-bold`}
-                        >
-
-                          {car.pdi}
-
-                        </button>
-
-                      </td>
-
-                      {/* CUSTOM */}
-
-                      <td className="p-4">
-
-                        <div className={`${getStatusColor(
-                          car.custom
-                        )} px-5 py-2 rounded-xl font-bold inline-block`}>
-
-                          {car.custom}
-
-                        </div>
-
-                      </td>
-
-                      {/* DELIVERY */}
-
-                      <td className="p-4">
-
+                      <td>
                         <button
                           onClick={() =>
-                            changeStatus(
-                              car.id,
-                              "delivery",
-                              car.delivery
+                            toggleStatus(
+                              car,
+                              "pdi"
                             )
                           }
-                          className={`${getStatusColor(
-                            car.delivery
-                          )} px-5 py-2 rounded-xl font-bold`}
+                          className={`px-4 py-2 rounded-xl text-sm ${
+                            car.pdi ===
+                            "เสร็จแล้ว"
+                              ? "bg-green-900 text-green-400"
+                              : car.pdi ===
+                                "กำลังทำ"
+                              ? "bg-yellow-900 text-yellow-400"
+                              : "bg-red-900 text-red-400"
+                          }`}
                         >
-
-                          {car.delivery}
-
+                          {car.pdi}
                         </button>
-
                       </td>
 
-                      {/* MODS */}
+                      <td>
+                        <button
+                          onClick={() =>
+                            toggleStatus(
+                              car,
+                              "delivery"
+                            )
+                          }
+                          className={`px-4 py-2 rounded-xl text-sm ${
+                            car.delivery ===
+                            "เสร็จแล้ว"
+                              ? "bg-green-900 text-green-400"
+                              : car.delivery ===
+                                "กำลังทำ"
+                              ? "bg-yellow-900 text-yellow-400"
+                              : "bg-red-900 text-red-400"
+                          }`}
+                        >
+                          {car.delivery}
+                        </button>
+                      </td>
 
-<td className="p-4">
-
-  <button
-    onClick={() =>
-      setSelectedCar(car)
-    }
-    className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-xl"
-  >
-    จัดการ
-  </button>
-
-</td>
-
-                      {/* PROGRESS */}
-
-                      <td className="p-4">
-
-                        <div className="flex items-center gap-4">
-
-                          <div className="w-[150px] h-3 bg-[#1e293b] rounded-full overflow-hidden">
-
+                      <td className="w-[250px]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-full h-3 bg-[#1e293b] rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-green-500"
+                              className="h-full bg-green-500 rounded-full"
                               style={{
-                                width: `${getProgress(
-                                  car
-                                )}%`,
+                                width: `${car.progress}%`,
                               }}
                             ></div>
-
                           </div>
 
                           <span>
-                            {getProgress(car)}%
+                            {car.progress}%
                           </span>
-
                         </div>
-
                       </td>
 
-{/* VIEW MODS */}
+                      <td className="w-[320px]">
+                        <div className="space-y-2">
+                          {car.parts?.map(
+                            (part, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between bg-[#0b1730] rounded-xl px-3 py-2"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      part.done
+                                    }
+                                    onChange={() =>
+                                      togglePart(
+                                        car,
+                                        index
+                                      )
+                                    }
+                                  />
 
-<td className="p-4">
+                                  <span>
+                                    {part.name}
+                                  </span>
+                                </div>
 
-
-</td>
-
-                      {/* ACTION */}
-
-                      <td className="p-4">
-
-                        <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    deletePart(
+                                      car,
+                                      index
+                                    )
+                                  }
+                                  className="bg-red-600 p-2 rounded-lg"
+                                >
+                                  <Trash2
+                                    size={14}
+                                  />
+                                </button>
+                              </div>
+                            )
+                          )}
 
                           <button
                             onClick={() => {
-
-                              if (
-                                editingId ===
-                                car.id
-                              ) {
-
-                                setEditingId(
-                                  null
+                              const partName =
+                                prompt(
+                                  "ชื่อของแต่ง"
                                 );
 
-                              }
-
-                              else {
-
-                                setEditingId(
-                                  car.id
-                                );
-
-                              }
-
+                              addPart(
+                                car,
+                                partName
+                              );
                             }}
-                            className={`px-5 py-2 rounded-xl font-bold ${
-                              editingId ===
-                              car.id
-
-                                ? "bg-green-600"
-
-                                : "bg-blue-600"
-                            }`}
+                            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm"
                           >
-
-                            {editingId ===
-                            car.id
-
-                              ? "กำลังแก้ไข"
-
-                              : "แก้ไข"}
-
+                            + เพิ่มของแต่ง
                           </button>
-
-                          <button
-                            onClick={() =>
-                              deleteCar(
-                                car.id
-                              )
-                            }
-                            className="bg-red-600 hover:bg-red-500 p-3 rounded-xl"
-                          >
-
-                            <Trash2 size={18} />
-
-                          </button>
-
                         </div>
-
                       </td>
 
+                      <td>
+                        <button
+                          onClick={() =>
+                            deleteCar(car.id)
+                          }
+                          className="bg-red-600 hover:bg-red-700 p-3 rounded-xl"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
                     </tr>
-
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
-
           </div>
-
         )}
-        {selectedCar && (
-
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-
-    <div className="bg-[#081426] border border-[#1e293b] w-[700px] rounded-3xl p-8">
-
-      <div className="flex items-center justify-between mb-8">
-
-        <div>
-
-          <h1 className="text-3xl font-black">
-            จัดการของแต่ง
-          </h1>
-
-          <p className="text-slate-400 mt-2">
-            {selectedCar.model}
-          </p>
-
-        </div>
-
-        <button
-          onClick={() =>
-            setSelectedCar(null)
-          }
-          className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl"
-        >
-
-          ปิด
-
-        </button>
-
-      </div>
-
-      {/* ADD MOD */}
-
-      <button
-        onClick={async () => {
-
-          const mod =
-            prompt(
-              "เพิ่มของแต่ง"
-            );
-
-          if (!mod) return;
-
-          await updateDoc(
-  doc(
-    db,
-    "cars",
-    selectedCar.id
-  ),
-  {
-    mods: [
-      ...(selectedCar.mods || []),
-
-      {
-        name: mod,
-        done: false,
-      },
-    ],
-  }
-);
-
-setSelectedCar({
-  ...selectedCar,
-
-  mods: [
-    ...(selectedCar.mods || []),
-
-    {
-      name: mod,
-      done: false,
-    },
-  ],
-});
-
-        }}
-
-        
-        className="bg-purple-600 hover:bg-purple-500 px-5 py-3 rounded-2xl mb-6"
-      >
-
-        + เพิ่มของแต่ง
-
-      </button>
-
-      {/* MOD LIST */}
-
-      <div className="space-y-4 max-h-[400px] overflow-auto">
-
-        {(selectedCar.mods || []).map(
-          (
-            mod,
-            index
-          ) => (
-
-            <div
-              key={index}
-              className="bg-[#111827] border border-[#1e293b] rounded-2xl px-5 py-4 flex items-center justify-between"
-            >
-
-              <div className="flex items-center gap-4">
-
-                <input
-                  type="checkbox"
-                  checked={mod.done}
-                  onChange={() =>
-                    toggleMod(
-                      selectedCar,
-                      index
-                    )
-                  }
-                  className="w-5 h-5"
-                />
-
-                <span className="text-lg">
-                  {mod.name}
-                </span>
-
-              </div>
-
-              <button
-                onClick={() =>
-                  deleteMod(
-                    selectedCar,
-                    index
-                  )
-                }
-                className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl"
-              >
-
-                ลบ
-
-              </button>
-
-            </div>
-
-          )
-        )}
-
-      </div>
-
-    </div>
-
-  </div>
-
-)}
       </main>
-
     </div>
-
   );
-
 }
 
 export default App;
